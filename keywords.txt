@@ -1,0 +1,9 @@
+pwm		KEYWORD2
+PWM		KEYWORD1
+interrupt_routine_empty	KEYWORD2
+set		KEYWORD2
+start	KEYWORD2
+stop	KEYWORD2
+print	KEYWORD2
+attachInterrupt	KEYWORD2
+detachInterrupt	KEYWORD2

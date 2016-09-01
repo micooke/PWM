@@ -1,0 +1,15 @@
+{
+  "name": "PWM",
+  "keywords": "timer","pwm",
+  "description": "PWM library for all timers. Designed for the ATtiny85,ATmega328p,ATmega32u4",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/micooke/PWM.git"
+  },
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr"
+  ]
+}
