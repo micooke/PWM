@@ -44,12 +44,13 @@ protected:
 	uint32_t base_clock;
 	uint8_t PS_IDX[5] = { 0,0,0,0,0 };
 	uint16_t PS[5] = { 0,0,0,0,0 };
+
+public:
 	void(*interrupt_routine1)();
 	void(*interrupt_routine2)();
 	void(*interrupt_routine3)();
 	void(*interrupt_routine4)();
 	
-public:
 	static void interrupt_routine_empty() {}
 	//void (*interrupt_routine0)(); // N/A - ISR(TIMER0_OVF_vect) is already defined in wiring.h so cannot be used
 
@@ -77,7 +78,31 @@ public:
 		disableInterrupt(Timer);
 		attachISR(Timer, interrupt_routine_empty);
 	}
-	
+	uint16_t getPeriodRegister(const uint8_t Timer)
+	{
+	  switch (Timer)
+	  {
+		 case 0:
+			return OCR0A;
+		 case 1:
+		 #if defined(__AVR_ATtinyX5__)
+			return OCR1C;
+		 #else
+			return ICR1;
+		 #endif
+		 #if defined(__AVR_ATmega328p__) | defined(__AVR_ATmega328P__)
+		 case 2:
+			return OCR2A;
+		 #elif defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
+		 case 3:
+			return ICR3;
+		 case 4:
+			return OCR4C;
+		 #endif
+		 default:
+			return 0;
+	  }
+	}
 protected:
 	void attachISR(const uint8_t &Timer, void(*isr)())
 	{

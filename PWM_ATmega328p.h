@@ -52,6 +52,15 @@ void PWM::set(const uint8_t &Timer, const char &ABCD_out, const uint32_t &Freque
 	// frequency = f_clk/(PS * (1 + PeriodRegister)); 
 	PeriodRegister = (FrequencyCount / PS[Timer]) - 1;
 	PulseWidthRegister = PeriodRegister / DutyCycle_Divisor;
+	
+	#if (_DEBUG > 0)
+	Serial.print(F("Timer "));
+	Serial.println(Timer);
+	Serial.print(F("PeriodRegister = "));
+	Serial.println(PeriodRegister);
+	Serial.print(F("PulseWidthRegister = "));
+	Serial.println(PulseWidthRegister);
+	#endif
 
 	// WGMx[210]  =  [111] Fast PWM, OCRxA as top
 	// WGMx[3210] = [1110] Fast PWM,  ICRx as top
