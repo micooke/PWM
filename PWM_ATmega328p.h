@@ -1,14 +1,57 @@
 #ifndef PWM_ATmega328p_H
 #define PWM_ATmega328p_H
 
+//+------------+---+--------+--------+--------+--------+--------+
+//| Chip       |   | Timer0 | Timer1 | Timer2 | Timer3 | Timer4 |
+//+------------+---+--------+--------+--------+--------+--------+
+//|            |   | 8b PS  | 16b PS | 8b PS  |   --   |   --   |
+//|            +---+--------+--------+--------+--------+--------+
+//| ATmega328p | A |   D6#  |   D9   |  D12*  |   --   |   --   |
+//|            | B |   D5   |  D10   |   D3   |   --   |   --   |
+//+------------+---+--------+--------+--------+--------+--------+
+// 8b/16b : 8 bit or 16 bit timer
+// PS/ePS : Regular prescalar, Extended prescalar selection
+//  PS = [0,1,8,64,256,1024]
+// ePS = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]
+// # toggled output. The frequency is half the set frequency, the duty cycle is fixed at 50%
+// * same as #, but software PWM. It is implemented through the respective TIMERx_OVF_vect ISR
+// 
+
+//void(*pwm_interrupt0)();
+//void(*pwm_interrupt0a)();
+//void(*pwm_interrupt0b)();
+
+void(*pwm_interrupt1)();
+void(*pwm_interrupt1a)();
+void(*pwm_interrupt1b)();
+
+void(*pwm_interrupt2)();
+void(*pwm_interrupt2a)();
+void(*pwm_interrupt2b)();
+
+#ifndef PWM_NOISR
+//TIMER0_OVF_vect is already defined in wiring.h (used by millis())
+//ISR(TIMER0_OVF_vect) { interrupt0(); }
+//ISR(TIMER0_COMPA_vect) { pwm_interrupt0a(); }
+//ISR(TIMER0_COMPB_vect) { pwm_interrupt0b(); }
+
+ISR(TIMER1_OVF_vect) { pwm_interrupt1(); }
+ISR(TIMER1_COMPA_vect) { pwm_interrupt1a(); }
+ISR(TIMER1_COMPB_vect) { pwm_interrupt1b(); }
+
+ISR(TIMER2_OVF_vect) { pwm_interrupt2(); }
+ISR(TIMER2_COMPA_vect) { pwm_interrupt2a(); }
+ISR(TIMER2_COMPB_vect) { pwm_interrupt2b(); }
+#endif
+
 volatile bool OCR2A_state = false;
 
-const uint8_t OCR0A_pin = 6;
-const uint8_t OCR0B_pin = 5;
-const uint8_t OCR1A_pin = 9;
-const uint8_t OCR1B_pin = 10;
-const uint8_t OCR2A_pin = 12;
-const uint8_t OCR2B_pin = 3;
+#define OCR0A_pin 6
+#define OCR0B_pin 5
+#define OCR1A_pin 9
+#define OCR1B_pin 10
+#define OCR2A_pin 12
+#define OCR2B_pin 3
 
 // HACK : I think OCR2A only toggles if OCR2A = TOP (255)
 void softPWM_OCR2A()
@@ -302,52 +345,180 @@ void PWM::print()
 	Serial.print(F("Timer2 : ")); Serial.print(TimerFrequency); Serial.println(F("Hz"));
 #endif
 }
-
-void PWM::enableInterrupt(const int8_t Timer)
+void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)())
+{
+	enableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = isr;
+					break;
+				default:
+					pwm_interrupt1 = isr;
+			}
+			break;
+		case 2:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt2a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt2b = isr;
+					break;
+				default:
+					pwm_interrupt2 = isr;
+			}
+			break;
+	}
+}
+void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
+{
+	disableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt1 = pwm_empty_interrupt;
+			}
+			break;
+		case 2:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt2a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt2b = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt2 = pwm_empty_interrupt;
+			}
+			break;
+	}
+}
+void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 {
 	// Timer overflow interrupts
 	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
 	//TIMSK1 = [   -  |   -  | ICIE1|   -  |   -  |OCIE1B|OCIE1A| TOIE1] // ATmega328p
 	//TIMSK2 = [   -  |   -  |   -  |   -  |   -  |OCIE2B|OCIE2A| TOIE2]
-
+	
 	switch (Timer)
 	{
 	case 0:
-		TIMSK0 |= _BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK0 |= _BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK0 |= _BV(OCIE0B); break;
+			default:
+				TIMSK0 |= _BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK1 |= _BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK1 |= _BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK1 |= _BV(OCIE1B); break;
+			default:
+				TIMSK1 |= _BV(TOIE1);
+		}
 		break;
 	case 2:
-		TIMSK2 |= _BV(TOIE2);
-		break;
-	case -1:
-		TIMSK0 |= _BV(TOIE0);
-		TIMSK1 |= _BV(TOIE1);
-		TIMSK2 |= _BV(TOIE2);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK2 |= _BV(OCIE2A); break;
+			case 'b':
+			case 'B':
+				TIMSK2 |= _BV(OCIE2B); break;
+			default:
+				TIMSK2 |= _BV(TOIE2);
+		}
 		break;
 	}
 }
-
-void PWM::disableInterrupt(const int8_t Timer)
+void PWM::disableInterrupt(const int8_t Timer, const char ABCD_out)
 {
+	// Timer overflow interrupts
+	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
+	//TIMSK1 = [   -  |   -  | ICIE1|   -  |   -  |OCIE1B|OCIE1A| TOIE1] // ATmega328p
+	//TIMSK2 = [   -  |   -  |   -  |   -  |   -  |OCIE2B|OCIE2A| TOIE2]
+	
 	switch (Timer)
 	{
 	case 0:
-		TIMSK0 &= ~_BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK0 &= ~_BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK0 &= ~_BV(OCIE0B); break;
+			default:
+				TIMSK0 &= ~_BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK1 &= ~_BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK1 &= ~_BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK1 &= ~_BV(OCIE1B); break;
+			default:
+				TIMSK1 &= ~_BV(TOIE1);
+		}
 		break;
 	case 2:
-		TIMSK2 &= ~_BV(TOIE2);
-		break;
-	case -1:
-		TIMSK0 &= ~_BV(TOIE0);
-		TIMSK1 &= ~_BV(TOIE1);
-		TIMSK2 &= ~_BV(TOIE2);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK2 &= ~_BV(OCIE2A); break;
+			case 'b':
+			case 'B':
+				TIMSK2 &= ~_BV(OCIE2B); break;
+			default:
+				TIMSK2 &= ~_BV(TOIE2);
+		}
 		break;
 	}
 }
-
 #endif

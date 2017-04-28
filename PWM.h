@@ -39,6 +39,8 @@
 #endif
 #endif
 
+static void pwm_empty_interrupt() {}
+
 class PWM {
 protected:
 	uint32_t base_clock;
@@ -46,88 +48,189 @@ protected:
 	uint16_t PS[5] = { 0,0,0,0,0 };
 
 public:
-	void(*interrupt_routine1)();
-	void(*interrupt_routine2)();
-	void(*interrupt_routine3)();
-	void(*interrupt_routine4)();
+	PWM() : base_clock(F_CPU){}
 	
-	static void interrupt_routine_empty() {}
-	//void (*interrupt_routine0)(); // N/A - ISR(TIMER0_OVF_vect) is already defined in wiring.h so cannot be used
-
-	PWM() : base_clock(F_CPU)
-	{
-		//attachISR(0, interrupt_routine_empty);
-		attachISR(1, interrupt_routine_empty);
-		attachISR(2, interrupt_routine_empty);
-		attachISR(3, interrupt_routine_empty);
-		attachISR(4, interrupt_routine_empty);
-	}
-
 	void set(const uint8_t &Timer, const char &ABCD_out, const uint32_t &FrequencyHz, const uint16_t DutyCycle_Divisor = 2, const bool invertOut = false);
 	void start(const int8_t Timer = -1);
 	void stop(const int8_t Timer = -1);
 	void print();
 	
-	void attachInterrupt(const uint8_t &Timer, void(*isr)())
+	void attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)());
+	void detachInterrupt(const uint8_t &Timer, const char &ABCD_out);
+
+	uint16_t set_register(const int8_t Timer = -1, const char ABCD_out = 'o', uint16_t register_value = 0)
 	{
-		disableInterrupt(Timer);
-		attachISR(Timer, isr);
+		switch (Timer)
+		{
+		 case 0:
+			switch (ABCD_out)
+			{
+				case 'b':
+				case 'B':
+					OCR0B = register_value;
+				case 'a':
+				case 'A':
+				default:
+					OCR0A = register_value;
+			}
+		 case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					OCR1A = register_value;
+				case 'b':
+				case 'B':
+					OCR1B = register_value;
+				#if defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
+				case 'c':
+				case 'C':
+					OCR1C = register_value;
+				#endif
+				default:
+					#if defined(__AVR_ATtinyX5__)
+						OCR1C = register_value;
+					#else
+						ICR1 = register_value;
+					#endif
+			}
+		 #if defined(__AVR_ATmega328p__) | defined(__AVR_ATmega328P__)
+		 case 2:
+			switch (ABCD_out)
+			{
+				case 'b':
+				case 'B':
+					OCR2B = register_value;
+				case 'a':
+				case 'A':
+				default:
+					OCR2A = register_value;
+			}
+		 #elif defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
+		 case 3:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					OCR3A = register_value;
+				case 'b':
+				case 'B':
+					OCR3B = register_value;
+				case 'c':
+				case 'C':
+					OCR3C = register_value;
+				default:
+					ICR3 = register_value;
+			}
+		 case 4:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					OCR4A = register_value;
+				case 'b':
+				case 'B':
+					OCR4B = register_value;
+				case 'd':
+				case 'D':
+					OCR4D = register_value;
+				default:
+					OCR4C = register_value;
+			}
+		 #endif
+	  }
 	}
-	void detachInterrupt(const uint8_t &Timer, void(*isr)())
-	{
-		disableInterrupt(Timer);
-		attachISR(Timer, interrupt_routine_empty);
-	}
-	uint16_t getPeriodRegister(const uint8_t Timer)
+	
+	uint16_t get_register(const int8_t Timer = -1, const char ABCD_out = 'o')
 	{
 	  switch (Timer)
 	  {
 		 case 0:
-			return OCR0A;
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					return 0;
+				case 'b':
+				case 'B':
+					return OCR0B;
+				default:
+					return OCR0A;
+			}
 		 case 1:
-		 #if defined(__AVR_ATtinyX5__)
-			return OCR1C;
-		 #else
-			return ICR1;
-		 #endif
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					return OCR1A;
+				case 'b':
+				case 'B':
+					return OCR1B;
+				#if defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
+				case 'c':
+				case 'C':
+					return OCR1C;
+				#endif
+				default:
+					#if defined(__AVR_ATtinyX5__)
+						return OCR1C;
+					#else
+						return ICR1;
+					#endif
+			}
 		 #if defined(__AVR_ATmega328p__) | defined(__AVR_ATmega328P__)
 		 case 2:
-			return OCR2A;
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					return 0;
+				case 'b':
+				case 'B':
+					return OCR2B;
+				default:
+					return OCR2A;
+			}
 		 #elif defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
 		 case 3:
-			return ICR3;
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					return OCR3A;
+				case 'b':
+				case 'B':
+					return OCR3B;
+				case 'c':
+				case 'C':
+					return OCR3C;
+				default:
+					return ICR3;
+			}
 		 case 4:
-			return OCR4C;
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					return OCR4A;
+				case 'b':
+				case 'B':
+					return OCR4B;
+				case 'd':
+				case 'D':
+					return OCR4D;
+				default:
+					return OCR4C;
+			}
 		 #endif
 		 default:
 			return 0;
 	  }
 	}
-protected:
-	void attachISR(const uint8_t &Timer, void(*isr)())
-	{
-		switch (Timer)
-		{
-			//		case 0:
-			//			interrupt_routine0 = isr;
-			//			break;
-		case 1:
-			interrupt_routine1 = isr;
-			break;
-		case 2:
-			interrupt_routine2 = isr;
-			break;
-		case 3:
-			interrupt_routine3 = isr;
-			break;
-		case 4:
-			interrupt_routine4 = isr;
-			break;
-		}
-	}
 
-	void enableInterrupt(const int8_t Timer = -1);
-	void disableInterrupt(const int8_t Timer = -1);
+	void enableInterrupt(const int8_t Timer = -1, const char ABCD_out = 'o');
+	void disableInterrupt(const int8_t Timer = -1, const char ABCD_out = 'o');
+	
 	void printRegister(volatile uint16_t _register, String _preTab = "         ")
 	{
 #if (_DEBUG > 0)
@@ -151,7 +254,6 @@ protected:
 	}
 };
 
-
 #if defined(__AVR_ATtinyX5__)
 #include <PWM_ATtinyX5.h>
 #elif defined(__AVR_ATmega328p__) | defined(__AVR_ATmega328P__) 
@@ -161,24 +263,5 @@ protected:
 #endif
 
 PWM pwm;
-
-#ifndef PWM_NOISR
-// ISR(TIMER0_OVF_vect) is already defined in wiring.h
-//#if defined(TIMER0_OVF_vect)
-//ISR(TIMER0_OVF_vect) { pwm.interrupt_routine0(); }
-//#endif
-#if defined(TIMER1_OVF_vect)
-ISR(TIMER1_OVF_vect) { pwm.interrupt_routine1(); }
-#endif
-#if defined(TIMER2_OVF_vect)
-ISR(TIMER2_OVF_vect) { pwm.interrupt_routine2(); }
-#endif
-#if defined(TIMER3_OVF_vect)
-ISR(TIMER3_OVF_vect) { pwm.interrupt_routine3(); }
-#endif
-#if defined(TIMER4_OVF_vect)
-ISR(TIMER4_OVF_vect) { pwm.interrupt_routine4(); }
-#endif
-#endif
 
 #endif

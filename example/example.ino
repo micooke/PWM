@@ -2,12 +2,12 @@
 #include <util/atomic.h>
 
 //ATtiny85
-//           +-\/-+
-//  RST PB5 1|*   |8 VCC
-//!OC1B PB3 2|    |7 PB2 D2
-// OC1B PB4 3|    |6 PB1 D1 OC0B  OC1A
-//      GND 4|    |5 PB0 D0 OC0A !OC1A
-//           +----+
+//            +-\/-+
+//   RST PB5 1|*   |8 VCC
+// !OC1B PB3 2|    |7 PB2 D2
+//  OC1B PB4 3|    |6 PB1 D1 OC0B  OC1A
+//       GND 4|    |5 PB0 D0 OC0A !OC1A
+//            +----+
 //
 //Arduino Nano
 //   +----+=====+----+
@@ -142,7 +142,7 @@ void setup()
 	pwm.set(0, 'b', 5000, 2);
 	pwm.set(1, 'a', 10000, 2);
 	pwm.set(1, 'b', 10000, 2);
-	pwm.attachISR(2, softPWM_OCR2A);
+	pwm.attachInterrupt(2, 'a', softPWM_OCR2A);
 	pwm.set(2, 'a', 15000, 2); // SoftwarePWM. Always 50% duty cycle. Freq = Freq/2 (as output is toggled)
 	pwm.set(2, 'b', 15000, 2);
 #endif

@@ -8,3 +8,5 @@ Release
 *.cppproj
 *.atsln
 *.componentinfo.xml
+*.user
+ClassDiagram.cd

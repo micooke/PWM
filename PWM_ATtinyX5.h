@@ -1,10 +1,43 @@
 #ifndef PWM_ATtinyX5_H
 #define PWM_ATtinyX5_H
 
-const uint8_t OCR0A_pin = 0;
-const uint8_t OCR0B_pin = 1;
-const uint8_t OCR1A_pin = 1;
-const uint8_t OCR1B_pin = 4;
+//+------------+---+--------+--------+--------+--------+--------+
+//| Chip       |   | Timer0 | Timer1 | Timer2 | Timer3 | Timer4 |
+//+------------+---+--------+--------+--------+--------+--------+
+//|            |   | 8b PS  | 8b ePS |   --   |   --   |   --   |
+//|            +---+--------+--------+--------+--------+--------+
+//| ATtiny85   | A |   D0   |   D1   |   --   |   --   |   --   |
+//|            | B |   D1   |   D3   |   --   |   --   |   --   |
+//+------------+---+--------+--------+--------+--------+--------+
+// 8b/16b : 8 bit or 16 bit timer
+// PS/ePS : Regular prescalar, Extended prescalar selection
+//  PS = [0,1,8,64,256,1024]
+// ePS = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]
+// 
+
+//void(*pwm_interrupt0)();
+//void(*pwm_interrupt0a)();
+//void(*pwm_interrupt0b)();
+
+void(*pwm_interrupt1)();
+void(*pwm_interrupt1a)();
+void(*pwm_interrupt1b)();
+
+#ifndef PWM_NOISR
+//TIMER0_OVF_vect is already defined in wiring.h (used by millis())
+//ISR(TIMER0_OVF_vect) { interrupt0(); } 
+//ISR(TIMER0_COMPA_vect) { pwm_interrupt0a(); }
+//ISR(TIMER0_COMPB_vect) { pwm_interrupt0b(); }
+
+ISR(TIMER1_OVF_vect) { pwm_interrupt1(); }
+ISR(TIMER1_COMPA_vect) { pwm_interrupt1a(); }
+ISR(TIMER1_COMPB_vect) { pwm_interrupt1b(); }
+#endif
+
+#define OCR0A_pin 0
+#define OCR0B_pin 1
+#define OCR1A_pin 1
+#define OCR1B_pin 4
 
 void PWM::set(const uint8_t &Timer, const char &ABCD_out, const uint32_t &FrequencyHz, const uint16_t DutyCycle_Divisor, const bool invertOut)
 {
@@ -208,7 +241,53 @@ void PWM::print()
 	Serial.print(F("Timer1 : ")); Serial.print(TimerFrequency); Serial.println(F("Hz"));
 #endif
 }
-void PWM::enableInterrupt(const int8_t Timer)
+void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)())
+{
+	enableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = isr;
+					break;
+				default:
+					pwm_interrupt1 = isr;
+			}
+			break;
+	}
+}
+void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
+{
+	disableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt1 = pwm_empty_interrupt;
+			}
+			break;
+	}
+}
+void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 {
 	// Timer overflow interrupts
 	//TIMSK  = [   -  |OCIE1A|OCIE1B|OCIE0A|OCIE0B| TOIE1| TOIE0|   -  ]
@@ -216,30 +295,65 @@ void PWM::enableInterrupt(const int8_t Timer)
 	switch (Timer)
 	{
 	case 0:
-		TIMSK |= _BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK |= _BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK |= _BV(OCIE0B); break;
+			default:
+				TIMSK |= _BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK |= _BV(TOIE1);
-		break;
-	case -1:
-		TIMSK |= _BV(TOIE0);
-		TIMSK |= _BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK |= _BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK |= _BV(OCIE1B); break;
+			default:
+				TIMSK |= _BV(TOIE1);
+		}
 		break;
 	}
 }
-void PWM::disableInterrupt(const int8_t Timer)
+void PWM::disableInterrupt(const int8_t Timer, const char ABCD_out)
 {
+	// Timer overflow interrupts
+	//TIMSK  = [   -  |OCIE1A|OCIE1B|OCIE0A|OCIE0B| TOIE1| TOIE0|   -  ]
+
 	switch (Timer)
 	{
 	case 0:
-		TIMSK &= ~_BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK &= ~_BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK &= ~_BV(OCIE0B); break;
+			default:
+				TIMSK &= ~_BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK &= ~_BV(TOIE1);
-		break;
-	case -1:
-		TIMSK &= ~_BV(TOIE0);
-		TIMSK &= ~_BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK &= ~_BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK &= ~_BV(OCIE1B); break;
+			default:
+				TIMSK &= ~_BV(TOIE1);
+		}
 		break;
 	}
 }

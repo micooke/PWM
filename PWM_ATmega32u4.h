@@ -1,15 +1,74 @@
 #ifndef PWM_ATmega32u4_H
 #define PWM_ATmega32u4_H
 
-const uint8_t OCR0A_pin = 11;
-const uint8_t OCR0B_pin = 3;
-const uint8_t OCR1A_pin = 9;
-const uint8_t OCR1B_pin = 10;
-const uint8_t OCR1C_pin = 11;
-const uint8_t OCR3A_pin = 5;
-const uint8_t OCR4A_pin = 13;
-const uint8_t OCR4B_pin = 10;
-const uint8_t OCR4D_pin = 6;
+//+------------+---+--------+--------+--------+--------+--------+
+//| Chip       |   | Timer0 | Timer1 | Timer2 | Timer3 | Timer4 |
+//+------------+---+--------+--------+--------+--------+--------+
+//|            |   | 8b PS  | 8b PS  |   --   | 16b PS | 8b ePS |
+//|            +---+--------+--------+--------+--------+--------+
+//| ATmega32u4 | A |  D11   |   D9   |   --   |   D5   |  D13   |
+//|            | B |   D3   |  D10   |   --   |   --   |  D10   |
+//|            | C |   --   |  D11   |   --   |   --   |   --   |
+//|            | D |   --   |   --   |   --   |   --   |   D6   |
+//+------------+---+--------+--------+--------+--------+--------+
+// 8b/16b : 8 bit or 16 bit timer
+// PS/ePS : Regular prescalar, Extended prescalar selection
+//  PS = [0,1,8,64,256,1024]
+// ePS = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]
+// # toggled output. The frequency is half the set frequency, the duty cycle is fixed at 50%
+// * same as #, but software PWM. It is implemented through the respective TIMERx_OVF_vect ISR
+// 
+
+//void(*pwm_interrupt0)();
+//void(*pwm_interrupt0a)();
+//void(*pwm_interrupt0b)();
+
+void(*pwm_interrupt1)();
+void(*pwm_interrupt1a)();
+void(*pwm_interrupt1b)();
+void(*pwm_interrupt1c)();
+
+void(*pwm_interrupt3)();
+void(*pwm_interrupt3a)();
+void(*pwm_interrupt3b)();
+void(*pwm_interrupt3c)();
+
+void(*pwm_interrupt4)();
+void(*pwm_interrupt4a)();
+void(*pwm_interrupt4b)();
+void(*pwm_interrupt4d)();
+
+#ifndef PWM_NOISR
+//TIMER0_OVF_vect is already defined in wiring.h (used by millis())
+//ISR(TIMER0_OVF_vect) { interrupt0(); }
+//ISR(TIMER0_COMPA_vect) { pwm_interrupt0a(); }
+//ISR(TIMER0_COMPB_vect) { pwm_interrupt0b(); }
+
+ISR(TIMER1_OVF_vect) { pwm_interrupt1(); }
+ISR(TIMER1_COMPA_vect) { pwm_interrupt1a(); }
+ISR(TIMER1_COMPB_vect) { pwm_interrupt1b(); }
+ISR(TIMER1_COMPC_vect) { pwm_interrupt1c(); }
+
+ISR(TIMER3_OVF_vect) { pwm_interrupt3(); }
+ISR(TIMER3_COMPA_vect) { pwm_interrupt3a(); }
+ISR(TIMER3_COMPB_vect) { pwm_interrupt3a(); }
+ISR(TIMER3_COMPC_vect) { pwm_interrupt3a(); }
+
+ISR(TIMER4_OVF_vect) { pwm_interrupt4(); }
+ISR(TIMER4_COMPA_vect) { pwm_interrupt4a(); }
+ISR(TIMER4_COMPB_vect) { pwm_interrupt4b(); }
+ISR(TIMER4_COMPD_vect) { pwm_interrupt4d(); }
+#endif
+
+#define OCR0A_pin 11
+#define OCR0B_pin 3
+#define OCR1A_pin 9
+#define OCR1B_pin 10
+#define OCR1C_pin 11
+#define OCR3A_pin 5
+#define OCR4A_pin 13
+#define OCR4B_pin 10
+#define OCR4D_pin 6
 
 void PWM::set(const uint8_t &Timer, const char &ABCD_out, const uint32_t &FrequencyHz, const uint16_t DutyCycle_Divisor, const bool invertOut)
 {
@@ -380,57 +439,271 @@ void PWM::print()
 	Serial.print(F("Timer4 : ")); Serial.print(TimerFrequency); Serial.println(F("Hz"));
 #endif
 }
-void PWM::enableInterrupt(const int8_t Timer)
+void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)())
+{
+	enableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = isr;
+					break;
+				default:
+					pwm_interrupt1 = isr;
+			}
+			break;
+		case 3:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt3a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt3b = isr;
+					break;
+				case 'c':
+				case 'C':
+					pwm_interrupt3c = isr;
+					break;
+				default:
+					pwm_interrupt3 = isr;
+			}
+			break;
+		case 4:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt4a = isr;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt4b = isr;
+					break;
+				case 'd':
+				case 'D':
+					pwm_interrupt4d = isr;
+					break;
+				default:
+					pwm_interrupt4 = isr;
+			}
+			break;
+	}
+}
+void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
+{
+	disableInterrupt(Timer, ABCD_out);
+	
+	switch (Timer)
+	{
+		case 1:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt1a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt1b = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt1 = pwm_empty_interrupt;
+			}
+			break;
+		case 3:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt3a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt3b = pwm_empty_interrupt;
+					break;
+				case 'c':
+				case 'C':
+					pwm_interrupt3c = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt3 = pwm_empty_interrupt;
+			}
+			break;
+		case 4:
+			switch (ABCD_out)
+			{
+				case 'a':
+				case 'A':
+					pwm_interrupt4a = pwm_empty_interrupt;
+					break;
+				case 'b':
+				case 'B':
+					pwm_interrupt4b = pwm_empty_interrupt;
+					break;
+				case 'd':
+				case 'D':
+					pwm_interrupt4d = pwm_empty_interrupt;
+					break;
+				default:
+					pwm_interrupt4 = pwm_empty_interrupt;
+			}
+			break;
+	}
+}
+void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 {
 	// Timer overflow interrupts
 	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
 	//TIMSK1 = [   -  |   -  | ICIE1|   -  |OCIE1C|OCIE1B|OCIE1A| TOIE1]
 	//TIMSK3 = [   -  |   -  | ICIE3|   -  |OCIE3C|OCIE3B|OCIE3A| TOIE3]
 	//TIMSK4 = [OCIE4D|OCIE4A|OCIE4B|   -  |   -  | TOIE4|   -  |   -  ]
-
+	
 	switch (Timer)
 	{
 	case 0:
-		TIMSK0 |= _BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK0 |= _BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK0 |= _BV(OCIE0B); break;
+			default:
+				TIMSK0 |= _BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK1 |= _BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK1 |= _BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK1 |= _BV(OCIE1B); break;
+			case 'c':
+			case 'C':
+				TIMSK1 |= _BV(OCIE1C); break;
+			default:
+				TIMSK1 |= _BV(TOIE1);
+		}
 		break;
 	case 3:
-		TIMSK3 |= _BV(TOIE3);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK3 |= _BV(OCIE3A); break;
+			case 'b':
+			case 'B':
+				TIMSK3 |= _BV(OCIE3B); break;
+			case 'c':
+			case 'C':
+				TIMSK3 |= _BV(OCIE3C); break;
+			default:
+				TIMSK3 |= _BV(TOIE3);
+		}
 		break;
 	case 4:
-		TIMSK4 |= _BV(TOIE4);
-		break;
-	case -1:
-		TIMSK0 |= _BV(TOIE0);
-		TIMSK1 |= _BV(TOIE1);
-		TIMSK3 |= _BV(TOIE3);
-		TIMSK4 |= _BV(TOIE4);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK4 |= _BV(OCIE4A); break;
+			case 'b':
+			case 'B':
+				TIMSK4 |= _BV(OCIE4B); break;
+			case 'd':
+			case 'D':
+				TIMSK4 |= _BV(OCIE4D); break;
+			default:
+				TIMSK4 |= _BV(TOIE4);
+		}
 		break;
 	}
 }
-void PWM::disableInterrupt(const int8_t Timer)
+void PWM::disableInterrupt(const int8_t Timer, const char ABCD_out)
 {
+	// Timer overflow interrupts
+	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
+	//TIMSK1 = [   -  |   -  | ICIE1|   -  |OCIE1C|OCIE1B|OCIE1A| TOIE1]
+	//TIMSK3 = [   -  |   -  | ICIE3|   -  |OCIE3C|OCIE3B|OCIE3A| TOIE3]
+	//TIMSK4 = [OCIE4D|OCIE4A|OCIE4B|   -  |   -  | TOIE4|   -  |   -  ]
+	
 	switch (Timer)
 	{
 	case 0:
-		TIMSK0 &= ~_BV(TOIE0);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK0 &= ~_BV(OCIE0A); break;
+			case 'b':
+			case 'B':
+				TIMSK0 &= ~_BV(OCIE0B); break;
+			default:
+				TIMSK0 &= ~_BV(TOIE0);
+		}
 		break;
 	case 1:
-		TIMSK1 &= ~_BV(TOIE1);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK1 &= ~_BV(OCIE1A); break;
+			case 'b':
+			case 'B':
+				TIMSK1 &= ~_BV(OCIE1B); break;
+			case 'c':
+			case 'C':
+				TIMSK1 &= ~_BV(OCIE1C); break;
+			default:
+				TIMSK1 &= ~_BV(TOIE1);
+		}
 		break;
 	case 3:
-		TIMSK3 &= ~_BV(TOIE3);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK3 &= ~_BV(OCIE3A); break;
+			case 'b':
+			case 'B':
+				TIMSK3 &= ~_BV(OCIE3B); break;
+			case 'c':
+			case 'C':
+				TIMSK3 &= ~_BV(OCIE3C); break;
+			default:
+				TIMSK3 &= ~_BV(TOIE3);
+		}
 		break;
 	case 4:
-		TIMSK4 &= ~_BV(TOIE4);
-		break;
-	case -1:
-		TIMSK0 &= ~_BV(TOIE0);
-		TIMSK1 &= ~_BV(TOIE1);
-		TIMSK3 &= ~_BV(TOIE3);
-		TIMSK4 &= ~_BV(TOIE4);
+		switch (ABCD_out)
+		{
+			case 'a':
+			case 'A':
+				TIMSK4 &= ~_BV(OCIE4A); break;
+			case 'b':
+			case 'B':
+				TIMSK4 &= ~_BV(OCIE4B); break;
+			case 'd':
+			case 'D':
+				TIMSK4 &= ~_BV(OCIE4D); break;
+			default:
+				TIMSK4 &= ~_BV(TOIE4);
+		}
 		break;
 	}
 }

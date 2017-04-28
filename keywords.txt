@@ -7,3 +7,8 @@ stop	KEYWORD2
 print	KEYWORD2
 attachInterrupt	KEYWORD2
 detachInterrupt	KEYWORD2
+enableInterrupt	KEYWORD2
+disableInterrupt	KEYWORD2
+printRegister	KEYWORD2
+get_register	KEYWORD2
+set_register	KEYWORD2
