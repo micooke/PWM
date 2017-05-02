@@ -19,24 +19,24 @@
 // * same as #, but software PWM. It is implemented through the respective TIMERx_OVF_vect ISR
 // 
 
-//void(*pwm_interrupt0)();
-//void(*pwm_interrupt0a)();
-//void(*pwm_interrupt0b)();
+//void(*pwm_interrupt0)() = &pwm_empty_interrupt;
+//void(*pwm_interrupt0a)() = &pwm_empty_interrupt;
+//void(*pwm_interrupt0b)() = &pwm_empty_interrupt;
 
-void(*pwm_interrupt1)();
-void(*pwm_interrupt1a)();
-void(*pwm_interrupt1b)();
-void(*pwm_interrupt1c)();
+void(*pwm_interrupt1)() = &pwm_empty_interrupt;
+void(*pwm_interrupt1a)() = &pwm_empty_interrupt;
+void(*pwm_interrupt1b)() = &pwm_empty_interrupt;
+void(*pwm_interrupt1c)() = &pwm_empty_interrupt;
 
-void(*pwm_interrupt3)();
-void(*pwm_interrupt3a)();
-void(*pwm_interrupt3b)();
-void(*pwm_interrupt3c)();
+void(*pwm_interrupt3)() = &pwm_empty_interrupt;
+void(*pwm_interrupt3a)() = &pwm_empty_interrupt;
+void(*pwm_interrupt3b)() = &pwm_empty_interrupt;
+void(*pwm_interrupt3c)() = &pwm_empty_interrupt;
 
-void(*pwm_interrupt4)();
-void(*pwm_interrupt4a)();
-void(*pwm_interrupt4b)();
-void(*pwm_interrupt4d)();
+void(*pwm_interrupt4)() = &pwm_empty_interrupt;
+void(*pwm_interrupt4a)() = &pwm_empty_interrupt;
+void(*pwm_interrupt4b)() = &pwm_empty_interrupt;
+void(*pwm_interrupt4d)() = &pwm_empty_interrupt;
 
 #ifndef PWM_NOISR
 //TIMER0_OVF_vect is already defined in wiring.h (used by millis())
@@ -441,7 +441,7 @@ void PWM::print()
 }
 void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)())
 {
-	enableInterrupt(Timer, ABCD_out);
+	disableInterrupt(Timer, ABCD_out);
 	
 	switch (Timer)
 	{
@@ -499,6 +499,8 @@ void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)
 			}
 			break;
 	}
+	
+	enableInterrupt(Timer, ABCD_out);
 }
 void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
 {
@@ -563,7 +565,7 @@ void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
 }
 void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 {
-	// Timer overflow interrupts
+	// Timer interrupts
 	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
 	//TIMSK1 = [   -  |   -  | ICIE1|   -  |OCIE1C|OCIE1B|OCIE1A| TOIE1]
 	//TIMSK3 = [   -  |   -  | ICIE3|   -  |OCIE3C|OCIE3B|OCIE3A| TOIE3]
@@ -636,7 +638,7 @@ void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 }
 void PWM::disableInterrupt(const int8_t Timer, const char ABCD_out)
 {
-	// Timer overflow interrupts
+	// Timer interrupts
 	//TIMSK0 = [   -  |   -  |   -  |   -  |   -  |OCIE0B|OCIE0A| TOIE0]
 	//TIMSK1 = [   -  |   -  | ICIE1|   -  |OCIE1C|OCIE1B|OCIE1A| TOIE1]
 	//TIMSK3 = [   -  |   -  | ICIE3|   -  |OCIE3C|OCIE3B|OCIE3A| TOIE3]

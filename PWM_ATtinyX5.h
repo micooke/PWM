@@ -15,13 +15,13 @@
 // ePS = [0,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384]
 // 
 
-//void(*pwm_interrupt0)();
-//void(*pwm_interrupt0a)();
-//void(*pwm_interrupt0b)();
+//void(*pwm_interrupt0)() = &pwm_empty_interrupt;
+//void(*pwm_interrupt0a)() = &pwm_empty_interrupt;
+//void(*pwm_interrupt0b)() = &pwm_empty_interrupt;
 
-void(*pwm_interrupt1)();
-void(*pwm_interrupt1a)();
-void(*pwm_interrupt1b)();
+void(*pwm_interrupt1)() = &pwm_empty_interrupt;
+void(*pwm_interrupt1a)() = &pwm_empty_interrupt;
+void(*pwm_interrupt1b)() = &pwm_empty_interrupt;
 
 #ifndef PWM_NOISR
 //TIMER0_OVF_vect is already defined in wiring.h (used by millis())
@@ -243,7 +243,7 @@ void PWM::print()
 }
 void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)())
 {
-	enableInterrupt(Timer, ABCD_out);
+	disableInterrupt(Timer, ABCD_out);
 	
 	switch (Timer)
 	{
@@ -263,6 +263,8 @@ void PWM::attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)
 			}
 			break;
 	}
+	
+	enableInterrupt(Timer, ABCD_out);
 }
 void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
 {
@@ -289,7 +291,7 @@ void PWM::detachInterrupt(const uint8_t &Timer, const char &ABCD_out)
 }
 void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 {
-	// Timer overflow interrupts
+	// Timer interrupts
 	//TIMSK  = [   -  |OCIE1A|OCIE1B|OCIE0A|OCIE0B| TOIE1| TOIE0|   -  ]
 
 	switch (Timer)
@@ -324,7 +326,7 @@ void PWM::enableInterrupt(const int8_t Timer, const char ABCD_out)
 }
 void PWM::disableInterrupt(const int8_t Timer, const char ABCD_out)
 {
-	// Timer overflow interrupts
+	// Timer interrupts
 	//TIMSK  = [   -  |OCIE1A|OCIE1B|OCIE0A|OCIE0B| TOIE1| TOIE0|   -  ]
 
 	switch (Timer)
