@@ -58,7 +58,7 @@ public:
 	void attachInterrupt(const uint8_t &Timer, const char &ABCD_out, void(*isr)());
 	void detachInterrupt(const uint8_t &Timer, const char &ABCD_out);
 
-	uint16_t set_register(const int8_t Timer = -1, const char ABCD_out = 'o', uint16_t register_value = 0)
+	void set_register(const int8_t Timer = -1, const char ABCD_out = 'o', uint16_t register_value = 0)
 	{
 		switch (Timer)
 		{
@@ -68,10 +68,12 @@ public:
 				case 'b':
 				case 'B':
 					OCR0B = register_value;
+					break;
 				case 'a':
 				case 'A':
 				default:
 					OCR0A = register_value;
+					break;
 			}
 		 case 1:
 			switch (ABCD_out)
@@ -79,13 +81,16 @@ public:
 				case 'a':
 				case 'A':
 					OCR1A = register_value;
+					break;
 				case 'b':
 				case 'B':
 					OCR1B = register_value;
+					break;
 				#if defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
 				case 'c':
 				case 'C':
 					OCR1C = register_value;
+					break;
 				#endif
 				default:
 					#if defined(__AVR_ATtinyX5__)
@@ -93,6 +98,7 @@ public:
 					#else
 						ICR1 = register_value;
 					#endif
+					break;
 			}
 		 #if defined(__AVR_ATmega328p__) | defined(__AVR_ATmega328P__)
 		 case 2:
@@ -101,10 +107,12 @@ public:
 				case 'b':
 				case 'B':
 					OCR2B = register_value;
+					break;
 				case 'a':
 				case 'A':
 				default:
 					OCR2A = register_value;
+					break;
 			}
 		 #elif defined(__AVR_ATmega32u4__) | defined(__AVR_ATmega32U4__)
 		 case 3:
@@ -113,14 +121,18 @@ public:
 				case 'a':
 				case 'A':
 					OCR3A = register_value;
+					break;
 				case 'b':
 				case 'B':
 					OCR3B = register_value;
+					break;
 				case 'c':
 				case 'C':
 					OCR3C = register_value;
+					break;
 				default:
 					ICR3 = register_value;
+					break;
 			}
 		 case 4:
 			switch (ABCD_out)
@@ -128,14 +140,18 @@ public:
 				case 'a':
 				case 'A':
 					OCR4A = register_value;
+					break;
 				case 'b':
 				case 'B':
 					OCR4B = register_value;
+					break;
 				case 'd':
 				case 'D':
 					OCR4D = register_value;
+					break;
 				default:
 					OCR4C = register_value;
+					break;
 			}
 		 #endif
 	  }

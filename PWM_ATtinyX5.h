@@ -140,6 +140,14 @@ void PWM::set(const uint8_t &Timer, const char &ABCD_out, const uint32_t &Freque
 		case 'B':
 			OCR1B = PulseWidthRegister;
 			pinMode(OCR1B_pin, OUTPUT);
+			// ATtiny85 BUG - ATtiny85 datasheet errata (section 27.2.3, page 213)
+			// PWM output OC1B does not work correctly unless COM1A1 and COM1A0 are
+			// set to the same value as COM1B1 and COM1B0 respectively
+			//TCCR1 =  [  CTC1| PWM1A|COM1A1|COM1A0|  CS13|  CS12|  CS11|  CS10]
+			// clear the old bits
+			TCCR1 &= ~_BV(COM1A1) & ~_BV(COM1A0);
+			// set the new bits
+			TCCR1 |= (COMx10 << 4);
 			//GTCCR =  [   TSM| PWM1B|COM1B1|COM1B0| FOC1B| FOC1A|  PSR1|  PSR0]
 			// clear the old bits
 			GTCCR &= ~_BV(PWM1B) & ~_BV(COM1B1) & ~_BV(COM1B0);

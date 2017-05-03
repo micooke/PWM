@@ -3,19 +3,26 @@ This library allows you to use any available timer to produce a PWM output.
 The design intent is to control the pulse width and PWM period, with a maximum range of supported frequencies.
 It uses the Fast PWM method, but this may change to include the Phase correct PWM method.
 
+ATtiny85 BUG - ATtiny85 datasheet errata (section 27.2.3, page 213)
+PWM output OC1B does not work correctly unless COM1A1 and COM1A0 are
+set to the same value as COM1B1 and COM1B0 respectively.
+
+This is handle internally by the PWM library when you set the 1B register settings.
+e.g. pwm.set(1,'b',60000,2); // internally it sets [COM1A1 COM1A0] to [COM1B1 COM1B0]
+
 | Chip       |   | Timer0 | Timer1 | Timer2 | Timer3 | Timer4 |
 |------------|---|--------|--------|--------|--------|--------|
-|            |   | 8b PS  | 8b ePS |   --   |   --   |   --   |
-| ATtiny85   | A |   D0   |   D1   |   --   |   --   |   --   |
-|            | B |   D1   |   D3   |   --   |   --   |   --   |
-|            |   | 8b PS  | 16b PS | 8b PS  |   --   |   --   |
-| ATmega328p | A |   D6\#  |   D9   |  D12\*  |   --   |   --   |
-|            | B |   D5   |  D10   |   D3   |   --   |   --   |
-|            |   | 8b PS  | 8b PS  |   --   | 16b PS | 8b ePS |
-| ATmega32u4 | A |  D11   |   D9   |   --   |   D5   |  D13   |
-|            | B |   D3   |  D10   |   --   |   --   |  D10   |
-|            | C |   --   |  D11   |   --   |   --   |   --   |
-|            | D |   --   |   --   |   --   |   --   |   D6   |
+|            |   | 8b PS  | 8b ePS | --     | --     | --     |
+| ATtiny85   | A | D0     | D1     | --     | --     | --     |
+|            | B | D1     | D3     | --     | --     | --     |
+|            |   | 8b PS  | 16b PS | 8b PS  | --     | --     |
+| ATmega328p | A | D6\#   | D9     | D12\*  | --     | --     |
+|            | B | D5     | D10    | D3     | --     | --     |
+|            |   | 8b PS  | 8b PS  | --     | 16b PS | 8b ePS |
+| ATmega32u4 | A | D11    | D9     | --     | D5     | D13    |
+|            | B | D3     | D10    | --     | --     | D10    |
+|            | C | --     | D11    | --     | --     | --     |
+|            | D | --     | --     | --     | --     | D6     |
 
 8b/16b : 8 bit or 16 bit timer
 
